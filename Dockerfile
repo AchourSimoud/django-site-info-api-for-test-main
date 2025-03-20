@@ -1,28 +1,22 @@
-# For more information, please refer to https://aka.ms/vscode-docker-python
-FROM python:3-slim
+# Utiliser une image légère de Python
+FROM python:3.11-slim  
 
-EXPOSE 9091
+# Définir les variables d'environnement pour éviter les fichiers .pyc et activer le logging
+ENV PYTHONDONTWRITEBYTECODE=1  
+ENV PYTHONUNBUFFERED=1  
 
-# Keeps Python from generating .pyc files in the container
-ENV PYTHONDONTWRITEBYTECODE=1
+# Définir le répertoire de travail
+WORKDIR /app  
 
-# Turns off buffering for easier container logging
-ENV PYTHONUNBUFFERED=1
+# Copier et installer les dépendances avant d'ajouter le code source (meilleur cache Docker)
+COPY requirements.txt .  
+RUN python -m pip install --no-cache-dir -r requirements.txt  
 
-# Install pip requirements
-COPY requirements.txt .
-RUN python -m pip install -r requirements.txt
+# Copier le projet sauf la base de données (elle sera stockée ailleurs)
+COPY ./myproject /app  
 
-WORKDIR /app
-COPY ./myproject /app
-COPY ./myproject/db.sqlite3 /app
+# Exposer le port de l’application Django
+EXPOSE 9091  
 
-# # Creates a non-root user with an explicit UID and adds permission to access the /app folder
-# # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
-# RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
-# USER appuser
-
-
-
-# During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
-CMD ["python", "manage.py", "runserver", "0.0.0.0:9091"]
+# Créer un script de lancement avec migration
+CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:9091"]
